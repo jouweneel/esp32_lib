@@ -4,45 +4,44 @@
 
 #define BITS_PER_LED_CMD 24
 
-#define T0H 7
-#define T0L 18
-#define T1H 18
-#define T1L 7
+#define TS 14
+#define TL 36
 
 static uint8_t rmt_channel = 0;
 
-static rmt_item32_t RMT_1 = {{{ T1H, 1, T1L, 0 }}};
-static rmt_item32_t RMT_0 = {{{ T0H, 1, T0L, 0 }}};
-
+static rmt_item32_t RMT_1 = {{{ TL, 1, TL, 0 }}};
+static rmt_item32_t RMT_0 = {{{ TS, 1, TL, 0 }}};
 void *ws2812_init(StripConfig_t *cfg) {
   rmt_config_t config = {
     .rmt_mode = RMT_MODE_TX,
     .channel = rmt_channel,
     .gpio_num = cfg->pin,
-    .mem_block_num = 1,
+    .mem_block_num = 2,
     .tx_config.loop_en = false,
     .tx_config.carrier_en = false,
     .tx_config.carrier_level = RMT_CARRIER_LEVEL_LOW,
     .tx_config.idle_output_en = true,
     .tx_config.idle_level = RMT_IDLE_LEVEL_LOW,
-    .clk_div = 4,
+    .clk_div = 2,
   };
 
   ESP_ERROR_CHECK(rmt_config(&config));
   ESP_ERROR_CHECK(rmt_driver_install(rmt_channel, 0, 0));
 
-  rmt_item32_t *rmtbuf = (rmt_item32_t *)malloc(BITS_PER_LED_CMD * cfg->size * sizeof(rmt_item32_t));
+  rmt_item32_t *rmtbuf = (rmt_item32_t *)malloc((BITS_PER_LED_CMD * cfg->size) * sizeof(rmt_item32_t));
 
   rmt_channel++;
   
   return (void *)rmtbuf;
 }
 
-void ws2812_write(StripData_t *data, uint8_t *buf) {
-  rmt_item32_t *rmtbuf = (rmt_item32_t *)(data->ctx);
+void ws2812_write(StripData_t *strip, uint8_t *buf) {
+  rmt_item32_t *rmtbuf = (rmt_item32_t *)(strip->ctx);
 
-  for (uint32_t i = 0; i < data->size; i++) {
-    uint32_t offset = i * BITS_PER_LED_CMD;
+  uint32_t offset = 0;
+
+  for (uint32_t i = 0; i < strip->size; i++) {
+    offset = i * BITS_PER_LED_CMD;
     uint8_t g = buf[3 * i];
     uint8_t r = buf[3 * i + 1];
     uint8_t b = buf[3 * i + 2];
@@ -75,5 +74,5 @@ void ws2812_write(StripData_t *data, uint8_t *buf) {
     rmtbuf[offset + 23] = (0b00000001 & b) ? RMT_1 : RMT_0;
   }
 
-  ESP_ERROR_CHECK(rmt_write_items(0, rmtbuf, data->size * BITS_PER_LED_CMD, true));
+  ESP_ERROR_CHECK(rmt_write_items(0, rmtbuf, strip->size * BITS_PER_LED_CMD, true));
 }
