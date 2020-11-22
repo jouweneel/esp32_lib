@@ -1,6 +1,9 @@
 #include "driver/rmt.h"
+#include "esp_log.h"
 
 #include "strip.h"
+
+static const char *TAG = "ws2812";
 
 #define BITS_PER_LED_CMD 24
 
@@ -16,7 +19,7 @@ void *ws2812_init(StripConfig_t *cfg) {
     .rmt_mode = RMT_MODE_TX,
     .channel = rmt_channel,
     .gpio_num = cfg->pin,
-    .mem_block_num = 2,
+    .mem_block_num = 1,
     .tx_config.loop_en = false,
     .tx_config.carrier_en = false,
     .tx_config.carrier_level = RMT_CARRIER_LEVEL_LOW,
@@ -35,16 +38,53 @@ void *ws2812_init(StripConfig_t *cfg) {
   return (void *)rmtbuf;
 }
 
+void ws2812_write_color(StripData_t *strip, uint8_t g, uint8_t r, uint8_t b) {
+  rmt_item32_t *rmtbuf = (rmt_item32_t *)(strip->ctx);
+
+  for (uint32_t i = 0; i < strip->size; i++) {
+    uint32_t offset = i * BITS_PER_LED_CMD;
+
+    rmtbuf[offset]     = (0b10000000 & r) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 1] = (0b01000000 & r) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 2] = (0b00100000 & r) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 3] = (0b00010000 & r) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 4] = (0b00001000 & r) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 5] = (0b00000100 & r) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 6] = (0b00000010 & r) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 7] = (0b00000001 & r) ? RMT_1 : RMT_0;
+
+    rmtbuf[offset + 8]  = (0b10000000 & g) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 9]  = (0b01000000 & g) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 10] = (0b00100000 & g) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 11] = (0b00010000 & g) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 12] = (0b00001000 & g) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 13] = (0b00000100 & g) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 14] = (0b00000010 & g) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 15] = (0b00000001 & g) ? RMT_1 : RMT_0;
+
+    rmtbuf[offset + 16] = (0b10000000 & b) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 17] = (0b01000000 & b) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 18] = (0b00100000 & b) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 19] = (0b00010000 & b) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 20] = (0b00001000 & b) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 21] = (0b00000100 & b) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 22] = (0b00000010 & b) ? RMT_1 : RMT_0;
+    rmtbuf[offset + 23] = (0b00000001 & b) ? RMT_1 : RMT_0;
+  }
+
+  ESP_ERROR_CHECK(rmt_write_items(0, rmtbuf, strip->size * BITS_PER_LED_CMD, true));
+}
+
 void ws2812_write(StripData_t *strip, uint8_t *buf) {
   rmt_item32_t *rmtbuf = (rmt_item32_t *)(strip->ctx);
 
-  uint32_t offset = 0;
-
   for (uint32_t i = 0; i < strip->size; i++) {
-    offset = i * BITS_PER_LED_CMD;
-    uint8_t g = buf[3 * i];
-    uint8_t r = buf[3 * i + 1];
-    uint8_t b = buf[3 * i + 2];
+    uint32_t offset = i * BITS_PER_LED_CMD;
+    uint32_t idx = 3 * i;
+
+    uint8_t g = buf[idx];
+    uint8_t r = buf[idx + 1];
+    uint8_t b = buf[idx + 2];
 
     rmtbuf[offset]     = (0b10000000 & r) ? RMT_1 : RMT_0;
     rmtbuf[offset + 1] = (0b01000000 & r) ? RMT_1 : RMT_0;
