@@ -6,8 +6,8 @@
  * Sensor abstraction layer.
  *
  */
-#ifndef __SENSOR_H__
-#define __SENSOR_H__
+#ifndef _CAM_SENSOR_H__
+#define _CAM_SENSOR_H__
 #include <stdint.h>
 
 #define OV9650_PID     (0x96)
@@ -135,4 +135,4 @@ typedef struct _sensor {
 // Resolution table (in camera.c)
 extern const int resolution[][2];
 
-#endif /* __SENSOR_H__ */
+#endif /* _CAM_SENSOR_H__ */
