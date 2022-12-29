@@ -1,3 +1,4 @@
+#include <fastmath.h>
 #include "esp_log.h"
 
 #include "driver/i2c.h"
@@ -87,8 +88,13 @@ void th_sensor(void *params) {
     ESP_LOGE(TAG, "i2c init: %i", err);
   }
 
-  uint8_t humidity = 0;
-  int8_t temperature = 0;
+  float humidity = 0;
+  float temperature = 0;
+
+  float to_single_decimal(float in) {
+    uint32_t val = (uint32_t)(in * 10);
+    return (float)val / 10;
+  }
 
   while(true) {
     if ((err = th_write(I2C_PORT, CMD_MEASUREMENT, ARG_MEASURE)) != ESP_OK) {
@@ -100,11 +106,11 @@ void th_sensor(void *params) {
       if ((err = th_read(I2C_PORT, rx_buf, RX_BUF_SIZE)) != ESP_OK) {
         ESP_LOGE(TAG, "READ: %d", err);
       } else {
-        uint32_t raw = ((uint32_t)rx_buf[1] << 12) | ((uint32_t)rx_buf[2] << 4) | (rx_buf[3] >> 4);
-        uint8_t _humidity = (uint8_t)((float)raw * 100 / 0x100000);
+        uint32_t raw_h = ((uint32_t)rx_buf[1] << 12) | ((uint32_t)rx_buf[2] << 4) | (rx_buf[3] >> 4);
+        float _humidity = to_single_decimal(((float)raw_h * 100 / 0x100000));
 
-        raw = ((uint32_t)(rx_buf[3] & 0x0f) << 16) | ((uint32_t)rx_buf[4] << 8) | rx_buf[5];
-        int8_t _temperature = (uint8_t)((float)raw * 200 / 0x100000 - 50);
+        uint32_t raw_t = ((uint32_t)(rx_buf[3] & 0x0f) << 16) | ((uint32_t)rx_buf[4] << 8) | rx_buf[5];
+        float _temperature = to_single_decimal(((float)raw_t * 200 / 0x100000 - 50));
 
         if (temperature != _temperature) {
           temperature = _temperature;
@@ -118,6 +124,6 @@ void th_sensor(void *params) {
       }
     }
 
-    vTaskDelay(100);
+    vTaskDelay(1000);
   }
 }

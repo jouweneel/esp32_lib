@@ -10,8 +10,8 @@
 typedef struct ThSensor_t {
   uint8_t scl_pin;
   uint8_t sda_pin;
-  void (*temperature_cb)(int8_t temperature);
-  void (*humidity_cb)(uint8_t humidity);
+  void (*temperature_cb)(float temperature);
+  void (*humidity_cb)(float humidity);
 } ThSensor_t;
 
 #ifdef __cplusplus
